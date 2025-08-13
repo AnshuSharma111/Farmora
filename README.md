@@ -10,7 +10,7 @@ It processes, filters, and enriches the question locally, then calls an AI only 
 ## 🧠 What it Does
 
 1. **Understands the farmer’s intent**  
-   Detects if the question is about weather, soil health, crop choice, pest control, market prices, etc. — using a **local model** (no API cost).
+   Detects if the question is about weather, soil health, crop choice, pest control, market prices, etc. using a **local model** (no API cost).
 
 2. **Finds the right data**  
    Pulls from trusted sources:
