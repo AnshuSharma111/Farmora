@@ -1,6 +1,6 @@
-# 🌾 Farmora
+# 🌾 AgroWise
 
-Farmora is a **smart assistant for farmers** that understands natural questions about farming, finds the most relevant data, and gives **clear, practical advice** — all while keeping expensive AI calls to a minimum.
+AgroWise is a **smart assistant for farmers** that understands natural questions about farming, finds the most relevant data, and gives **clear, practical advice** — all while keeping expensive AI calls to a minimum.
 
 Unlike typical AI chatbots that send your whole question to the cloud immediately, FarmerAI works **offline-first**.  
 It processes, filters, and enriches the question locally, then calls an AI only once — for the final, human-friendly answer.
