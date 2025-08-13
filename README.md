@@ -1,9 +1,9 @@
 # 🌾 Farmora
 
-Farmora is a **smart assistant for farmers** that understands natural questions about farming, finds the most relevant data, and gives **clear, practical advice** — all while keeping expensive AI calls to a minimum.
+Farmora is a **smart assistant for farmers** that understands natural questions about farming, finds the most relevant data, and gives **clear, practical advice** while keeping expensive AI calls to a minimum.
 
 Unlike typical AI chatbots that send your whole question to the cloud immediately, FarmerAI works **offline-first**.  
-It processes, filters, and enriches the question locally, then calls an AI only once — for the final, human-friendly answer.
+It processes, filters, and enriches the question locally, then calls an AI only for the final, human-friendly answer.
 
 ---
 
@@ -20,7 +20,7 @@ It processes, filters, and enriches the question locally, then calls an AI only 
    - Your own previous queries
 
 3. **Summarizes and cleans data**  
-   Compresses the relevant info so the AI only sees **what matters** — not 10 pages of raw data.
+   Compresses the relevant info so the AI only sees **what matters** and saves compute by not processing 10 pages of raw data.
 
 4. **Normalizes language**  
    Translates domain jargon and supports multiple languages so the farmer gets the answer in their preferred format.
