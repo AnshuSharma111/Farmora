@@ -1,0 +1,98 @@
+[
+    {
+        "language": "Assamese",
+        "code": "as"
+    },
+    {
+        "language": "Bengali",
+        "code": "bn"
+    },
+    {
+        "language": "Bodo",
+        "code": "brx"
+    },
+    {
+        "language": "Dogri",
+        "code": "doi"
+    },
+    {
+        "language": "Gujarati",
+        "code": "gu"
+    },
+    {
+        "language": "Hindi",
+        "code": "hi"
+    },
+    {
+        "language": "Kannada",
+        "code": "kn"
+    },
+    {
+        "language": "Kashmiri",
+        "code": "ks"
+    },
+    {
+        "language": "Konkani",
+        "code": "kok"
+    },
+    {
+        "language": "Maithili",
+        "code": "mai"
+    },
+    {
+        "language": "Malayalam",
+        "code": "ml"
+    },
+    {
+        "language": "Manipuri (Meitei)",
+        "code": "mni"
+    },
+    {
+        "language": "Marathi",
+        "code": "mr"
+    },
+    {
+        "language": "Nepali",
+        "code": "ne"
+    },
+    {
+        "language": "Odia (Oriya)",
+        "code": "or"
+    },
+    {
+        "language": "Punjabi",
+        "code": "pa"
+    },
+    {
+        "language": "Sanskrit",
+        "code": "sa"
+    },
+    {
+        "language": "Santali",
+        "code": "sat"
+    },
+    {
+        "language": "Sindhi",
+        "code": "sd"
+    },
+    {
+        "language": "Tamil",
+        "code": "ta"
+    },
+    {
+        "language": "Telugu",
+        "code": "te"
+    },
+    {
+        "language": "Urdu",
+        "code": "ur"
+    },
+    {
+        "language": "English",
+        "code": "en"
+    },
+    {
+        "language": "Other",
+        "code": "other"
+    }
+]
