@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.farmora.data.model.Crop
 import com.farmora.data.model.SelectedCrop
+import com.farmora.data.model.Language
+import com.farmora.data.model.SelectedLanguage
 import com.farmora.data.repository.CropRepository
+import com.farmora.data.repository.LanguageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,16 +22,26 @@ data class OnboardingUiState(
     val searchQuery: String = "",
     val searchSuggestions: List<Crop> = emptyList(),
     val isLoading: Boolean = false,
-    val canProceed: Boolean = false
+    val canProceed: Boolean = false,
+    // Language selection state
+    val selectedLanguage: SelectedLanguage? = null,
+    val languages: List<Language> = emptyList(),
+    val languageSearchQuery: String = "",
+    val filteredLanguages: List<Language> = emptyList()
 )
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val cropRepository: CropRepository
+    private val cropRepository: CropRepository,
+    private val languageRepository: LanguageRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
+
+    init {
+        loadLanguages()
+    }
 
     fun updateSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
@@ -77,17 +90,76 @@ class OnboardingViewModel @Inject constructor(
         )
     }
 
+    // Language functions
+    private fun loadLanguages() {
+        viewModelScope.launch {
+            try {
+                val languages = languageRepository.getLanguages()
+                _uiState.value = _uiState.value.copy(
+                    languages = languages,
+                    filteredLanguages = languages
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    languages = emptyList(),
+                    filteredLanguages = emptyList()
+                )
+            }
+        }
+    }
+
+    fun updateLanguageSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(languageSearchQuery = query)
+
+        val filteredLanguages = if (query.isBlank()) {
+            _uiState.value.languages
+        } else {
+            _uiState.value.languages.filter { language ->
+                language.language.contains(query, ignoreCase = true)
+            }
+        }
+
+        _uiState.value = _uiState.value.copy(filteredLanguages = filteredLanguages)
+    }
+
+    fun selectLanguage(language: Language) {
+        val selectedLanguage = SelectedLanguage(
+            name = language.language,
+            code = language.code
+        )
+        _uiState.value = _uiState.value.copy(
+            selectedLanguage = selectedLanguage,
+            canProceed = updateCanProceed()
+        )
+    }
+
+    private fun updateCanProceed(): Boolean {
+        return when (_uiState.value.currentStep) {
+            0 -> _uiState.value.selectedCrops.isNotEmpty()
+            1 -> _uiState.value.selectedLanguage != null
+            else -> true
+        }
+    }
+
     fun nextStep() {
         val currentStep = _uiState.value.currentStep
         if (currentStep < _uiState.value.totalSteps - 1) {
-            _uiState.value = _uiState.value.copy(currentStep = currentStep + 1)
+            val newStep = currentStep + 1
+            _uiState.value = _uiState.value.copy(
+                currentStep = newStep,
+                canProceed = updateCanProceed()
+            )
         }
     }
 
     fun previousStep() {
         val currentStep = _uiState.value.currentStep
         if (currentStep > 0) {
-            _uiState.value = _uiState.value.copy(currentStep = currentStep - 1)
+            val newStep = currentStep - 1
+            _uiState.value = _uiState.value.copy(
+                currentStep = newStep,
+                canProceed = updateCanProceed()
+            )
         }
     }
 
@@ -100,12 +172,14 @@ class OnboardingViewModel @Inject constructor(
     fun submitOnboarding(): OnboardingData {
         // Return all collected data for final submission
         return OnboardingData(
-            selectedCrops = _uiState.value.selectedCrops
+            selectedCrops = _uiState.value.selectedCrops,
+            selectedLanguage = _uiState.value.selectedLanguage
         )
     }
 }
 
 data class OnboardingData(
-    val selectedCrops: List<SelectedCrop>
+    val selectedCrops: List<SelectedCrop>,
+    val selectedLanguage: SelectedLanguage?
     // Add more fields as you add more onboarding steps
 )

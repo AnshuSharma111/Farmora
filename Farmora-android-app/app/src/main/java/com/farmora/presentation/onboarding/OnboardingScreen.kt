@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.farmora.presentation.onboarding.components.OnboardingProgressIndicator
 import com.farmora.presentation.onboarding.screens.CropSelectionScreen
+import com.farmora.presentation.onboarding.screens.LanguageSelectionScreen
 import com.farmora.presentation.onboarding.screens.PlaceholderOnboardingScreen
 import com.farmora.ui.theme.Green600
 import kotlinx.coroutines.launch
@@ -112,12 +113,11 @@ fun OnboardingScreen(
                     onRemoveCrop = viewModel::removeCrop,
                     onClearSearch = viewModel::clearSearch
                 )
-
-                1 -> PlaceholderOnboardingScreen(
-                    title = "Farm Details",
-                    description = "Tell us about your farm size, location, and farming methods."
+                1 -> LanguageSelectionScreen(
+                    uiState = uiState,
+                    onLanguageSearchChange = viewModel::updateLanguageSearchQuery,
+                    onLanguageSelect = viewModel::selectLanguage
                 )
-
                 2 -> PlaceholderOnboardingScreen(
                     title = "Goals & Preferences",
                     description = "What are your farming goals and how can we help you achieve them?"
