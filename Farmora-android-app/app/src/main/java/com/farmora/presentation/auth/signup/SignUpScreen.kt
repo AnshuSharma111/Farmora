@@ -67,7 +67,7 @@ import com.farmora.ui.theme.*
 @Composable
 fun SignUpScreen(
     onNavigateToLogin: () -> Unit,
-    onNavigateToHome: () -> Unit,
+    onNavigateToOnboarding: () -> Unit,
     authViewModel: AuthviewModel = hiltViewModel()
 ) {
 
@@ -82,7 +82,7 @@ fun SignUpScreen(
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
-            onNavigateToHome()
+            onNavigateToOnboarding()
         }
     }
 

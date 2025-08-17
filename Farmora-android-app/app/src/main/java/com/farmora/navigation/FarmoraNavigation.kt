@@ -13,11 +13,13 @@ import com.farmora.presentation.auth.AuthviewModel
 import com.farmora.presentation.auth.login.LoginScreen
 import com.farmora.presentation.auth.signup.SignUpScreen
 import com.farmora.presentation.home.HomeScreen
+import com.farmora.presentation.onboarding.navigation.OnboardingNavigation
 
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object SignUp : Screen("signup")
+    object Onboarding : Screen("onboarding")
     object Home : Screen("home")
 }
 
@@ -29,11 +31,14 @@ fun FarmoraNavigation(
 ) {
     val uiState by authViewModel.uiState.collectAsState()
 
+    // Temporarily set onboarding as start destination for testing
+    val startDestination = Screen.Onboarding.route
 
-    val startDestination = when {
-        uiState.isLoggedIn -> Screen.Home.route
-        else -> Screen.Login.route
-    }
+    // Original logic (restore after testing):
+    // val startDestination = when {
+    //     uiState.isLoggedIn -> Screen.Home.route
+    //     else -> Screen.Login.route
+    // }
 
     NavHost(navController = navController,
         startDestination = startDestination,
@@ -59,8 +64,8 @@ fun FarmoraNavigation(
                 onNavigateToLogin = {
                     navController.popBackStack()
                 },
-                onNavigateToHome = {
-                    navController.navigate(Screen.Home.route) {
+                onNavigateToOnboarding = {
+                    navController.navigate(Screen.Onboarding.route) {
                         popUpTo(Screen.SignUp.route) { inclusive = true }
                     }
                 },
@@ -68,6 +73,15 @@ fun FarmoraNavigation(
             )
         }
 
+        composable(Screen.Onboarding.route) {
+            OnboardingNavigation(
+                onComplete = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         composable(Screen.Home.route) {
             HomeScreen(
