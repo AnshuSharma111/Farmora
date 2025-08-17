@@ -34,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.farmora.presentation.onboarding.components.OnboardingProgressIndicator
 import com.farmora.presentation.onboarding.screens.CropSelectionScreen
 import com.farmora.presentation.onboarding.screens.LanguageSelectionScreen
+import com.farmora.presentation.onboarding.screens.LocationPermissionScreen
 import com.farmora.presentation.onboarding.screens.PlaceholderOnboardingScreen
 import com.farmora.ui.theme.Green600
 import kotlinx.coroutines.launch
@@ -118,9 +119,9 @@ fun OnboardingScreen(
                     onLanguageSearchChange = viewModel::updateLanguageSearchQuery,
                     onLanguageSelect = viewModel::selectLanguage
                 )
-                2 -> PlaceholderOnboardingScreen(
-                    title = "Goals & Preferences",
-                    description = "What are your farming goals and how can we help you achieve them?"
+                2 -> LocationPermissionScreen(
+                    uiState = uiState,
+                    viewModel = viewModel
                 )
             }
         }
@@ -148,10 +149,15 @@ private fun OnboardingBottomBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Previous button
+            // Previous button with green accent to match Next button
             if (currentStep > 0) {
                 OutlinedButton(
-                    onClick = onPrevious, modifier = Modifier.weight(1f)
+                    onClick = onPrevious,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Green600
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Green600)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -170,7 +176,7 @@ private fun OnboardingBottomBar(
             // Next/Finish button with green accent
             Button(
                 onClick = onNext,
-                enabled = canProceed || currentStep > 0,
+                enabled = canProceed,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Green600,

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.farmora.data.model.UserLocation
 
 data class OnboardingUiState(
     val currentStep: Int = 0,
@@ -27,7 +28,12 @@ data class OnboardingUiState(
     val selectedLanguage: SelectedLanguage? = null,
     val languages: List<Language> = emptyList(),
     val languageSearchQuery: String = "",
-    val filteredLanguages: List<Language> = emptyList()
+    val filteredLanguages: List<Language> = emptyList(),
+    // Location state
+    val userLocation: UserLocation? = null,
+    val isLocationPermissionGranted: Boolean = false,
+    val isLocationLoading: Boolean = false,
+    val locationError: String? = null
 )
 
 @HiltViewModel
@@ -133,11 +139,45 @@ class OnboardingViewModel @Inject constructor(
         )
     }
 
+    // Location functions
+    fun updateLocationPermissionStatus(isGranted: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            isLocationPermissionGranted = isGranted,
+            canProceed = updateCanProceed()
+        )
+    }
+
+    fun setLocationLoading(isLoading: Boolean) {
+        _uiState.value = _uiState.value.copy(isLocationLoading = isLoading)
+    }
+
+    fun setUserLocation(latitude: Double, longitude: Double, address: String? = null) {
+        val location = UserLocation(latitude, longitude, address)
+        _uiState.value = _uiState.value.copy(
+            userLocation = location,
+            isLocationLoading = false,
+            locationError = null,
+            canProceed = updateCanProceed()
+        )
+    }
+
+    fun setLocationError(error: String) {
+        _uiState.value = _uiState.value.copy(
+            locationError = error,
+            isLocationLoading = false
+        )
+    }
+
+    fun clearLocationError() {
+        _uiState.value = _uiState.value.copy(locationError = null)
+    }
+
     private fun updateCanProceed(): Boolean {
         return when (_uiState.value.currentStep) {
             0 -> _uiState.value.selectedCrops.isNotEmpty()
             1 -> _uiState.value.selectedLanguage != null
-            else -> true
+            2 -> _uiState.value.isLocationPermissionGranted && _uiState.value.userLocation != null
+            else -> false
         }
     }
 
@@ -170,16 +210,16 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun submitOnboarding(): OnboardingData {
-        // Return all collected data for final submission
         return OnboardingData(
             selectedCrops = _uiState.value.selectedCrops,
-            selectedLanguage = _uiState.value.selectedLanguage
+            selectedLanguage = _uiState.value.selectedLanguage,
+            userLocation = _uiState.value.userLocation
         )
     }
 }
 
 data class OnboardingData(
     val selectedCrops: List<SelectedCrop>,
-    val selectedLanguage: SelectedLanguage?
-    // Add more fields as you add more onboarding steps
+    val selectedLanguage: SelectedLanguage?,
+    val userLocation: UserLocation?
 )
