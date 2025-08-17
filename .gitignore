@@ -1,3 +1,5 @@
+# Whisper and other model files
+models/
 # Logs
 logs
 *.log
