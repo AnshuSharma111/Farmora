@@ -44,7 +44,7 @@ print(result)
 **Location:** `analyze_intent_keywords.py`
 
 **Description:**
-Analyzes a text string in any language to extract both the predicted intent (using XLM-RoBERTa) and relevant keywords (using KeyBERT with a multilingual model).
+Analyzes a text string in any language to extract both the predicted intent and relevant keywords using Groq's LLM API. This approach leverages the Llama 3 70B model for high-quality multilingual understanding.
 
 **Signature:**
 ```python
@@ -75,5 +75,122 @@ print(result)
 # {
 #   'intent': 'weather_query',
 #   'keywords': ['मौसम', 'जानकारी']
+# }
+```
+
+# Tools
+
+## 1. Weather API
+**Location:** `tools/weather_api.py`
+
+**Description:**
+Fetches current weather data for a given latitude and longitude using the Open-Meteo API.
+
+**Signature:**
+```python
+def get_weather(lat: float, lon: float) -> dict
+```
+
+**Parameters:**
+- `lat` (float): Latitude of the location.
+- `lon` (float): Longitude of the location.
+
+**Returns:**
+- `dict`: Dictionary containing current weather data as returned by the API (e.g., temperature, windspeed, etc.)
+
+**Raises:**
+- `Exception`: If the API call fails or returns an error, or if no weather data is found.
+
+**Example Usage:**
+```python
+from tools.weather_api import get_weather
+
+weather = get_weather(28.6139, 77.2090)  # Example: New Delhi coordinates
+print(weather)
+# Output (example):
+# {
+#   'temperature': 34.2,
+#   'windspeed': 5.1,
+#   'winddirection': 120,
+#   'weathercode': 1,
+#   'is_day': 1,
+#   'time': '2025-08-18T12:00'
+# }
+```
+
+## 2. Commodity Scraper
+**Location:** `tools/scrape_commodity.py`
+
+**Description:**
+Scrapes commodity price and arrival data from the Agmarknet website for a given state, district, market, and commodity.
+
+**Signature:**
+```python
+def scrape_commodity(
+    state: str,
+    commodity: str,
+    district: str,
+    market: str,
+    price_arrival: str = "Both",
+    date_from: str = None,
+    date_to: str = None
+) -> List[Dict[str, str]]
+```
+
+**Parameters:**
+- `state` (str): The state name (e.g., "Himachal Pradesh").
+- `commodity` (str): The commodity name (e.g., "Apple").
+- `district` (str): The district name (e.g., "Shimla").
+- `market` (str): The market name (e.g., "Shimla and Kinnaur(Nerwa)").
+- `price_arrival` (str, optional): Type of data to fetch - "Price", "Arrival", or "Both" (default).
+- `date_from` (str, optional): Start date in format "dd-MMM-yyyy" (e.g., "27-Jul-2025").
+- `date_to` (str, optional): End date in format "dd-MMM-yyyy" (e.g., "18-Aug-2025").
+
+**Returns:**
+- `List[Dict[str, str]]`: A list of dictionaries containing the scraped data with keys such as State Name, District Name, Market Name, Variety, Group, Arrivals, Min Price, Max Price, Modal Price, Reported Date, and Grade.
+
+**Raises:**
+- `ValueError`: If provided input parameters are invalid or not found in the dropdown.
+- `RuntimeError`: If navigation fails or no data table is found on the page.
+
+**Additional Functions:**
+
+```python
+def get_latest_prices(
+    data: List[Dict[str, str]], 
+    commodity_variety: Optional[str] = None
+) -> Dict[str, Union[str, float]]
+```
+
+**Parameters:**
+- `data` (List[Dict[str, str]]): List of dictionaries containing scraped data.
+- `commodity_variety` (str, optional): Optional variety of the commodity to filter by.
+
+**Returns:**
+- `Dict[str, Union[str, float]]`: Dictionary with the latest price information including variety, min_price, max_price, modal_price, date, and market.
+
+**Example Usage:**
+```python
+from tools.scrape_commodity import scrape_commodity, get_latest_prices
+
+# Get all commodity data
+results = scrape_commodity(
+    "Himachal Pradesh",
+    "Apple",
+    "Shimla",
+    "Shimla and Kinnaur(Nerwa)"
+)
+
+# Get latest prices for a specific variety
+latest = get_latest_prices(results, "Royal Delicious")
+print(latest)
+# Output (example):
+# {
+#   'variety': 'Royal Delicious',
+#   'min_price': 2000.0,
+#   'max_price': 9000.0,
+#   'modal_price': 6000.0,
+#   'date': '14 Aug 2025',
+#   'market': 'Shimla and Kinnaur(Nerwa)'
 # }
 ```

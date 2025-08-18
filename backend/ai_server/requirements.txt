@@ -1,9 +1,9 @@
 # add any dependencies required for Whisper ASR and NLP pipeline
 whisper
 torch
-transformers
-sentence-transformers
-keybert
 numpy
-torch
-numpy
+requests
+bs4
+selenium
+webdriver-manager
+python-dotenv
