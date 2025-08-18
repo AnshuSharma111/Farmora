@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Insights
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -48,6 +49,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -91,11 +93,13 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onSignOut: () -> Unit, authViewModel: AuthviewModel
+    onSignOut: () -> Unit,
+    authViewModel: AuthviewModel
 ) {
     val uiState by authViewModel.uiState.collectAsState()
     var isRecording by remember { mutableStateOf(false) }
     var showDelayedText by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     // Animation states for fullscreen voice recording
     val expandAnimation = remember { Animatable(0f) }
@@ -229,7 +233,7 @@ fun HomeScreen(
                         title = {
                         Column {
                             Text(
-                                text = "Hi, $username! 👋",
+                                text = "Hi, $username!",
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onBackground
@@ -243,7 +247,7 @@ fun HomeScreen(
                             )
                         }
                     }, navigationIcon = {
-                        IconButton(onClick = { /* Profile click */ }) {
+                        IconButton(onClick = { showLogoutDialog = true }) {
                             Icon(
                                 imageVector = Icons.Default.AccountCircle,
                                 contentDescription = "Profile",
@@ -629,6 +633,26 @@ fun HomeScreen(
             }
         }
     }
+
+    // Handle logout when auth state changes
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (!uiState.isLoggedIn && !uiState.isLoading) {
+            onSignOut()
+        }
+    }
+
+    // Logout Confirmation Dialog
+    if (showLogoutDialog) {
+        LogoutDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                authViewModel.signOut()
+            },
+            onDismiss = {
+                showLogoutDialog = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -874,4 +898,61 @@ fun VoiceRecordingOverlay(
             }
         }
     }
+}
+
+@Composable
+private fun LogoutDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Logout",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to logout? You will be redirected to the login screen.",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text(
+                    text = "Logout",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text(
+                    text = "Cancel",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
+    )
 }
