@@ -1,0 +1,152 @@
+[
+  {
+    "state": "Punjab",
+    "district": "Ludhiana",
+    "market": "Ludhiana"
+  },
+  {
+    "state": "Punjab",
+    "district": "Ludhiana",
+    "market": "Khanna"
+  },
+  {
+    "state": "Punjab",
+    "district": "Ludhiana",
+    "market": "Jagraon"
+  },
+  {
+    "state": "Punjab",
+    "district": "Ludhiana",
+    "market": "Samrala"
+  },
+  {
+    "state": "Punjab",
+    "district": "Amritsar",
+    "market": "Amritsar"
+  },
+  {
+    "state": "Punjab",
+    "district": "Patiala",
+    "market": "Patiala"
+  },
+  {
+    "state": "Punjab",
+    "district": "Jalandhar",
+    "market": "Jalandhar"
+  },
+  {
+    "state": "Punjab",
+    "district": "Bathinda",
+    "market": "Bathinda"
+  },
+  {
+    "state": "Haryana",
+    "district": "Karnal",
+    "market": "Karnal"
+  },
+  {
+    "state": "Haryana",
+    "district": "Ambala",
+    "market": "Ambala"
+  },
+  {
+    "state": "Haryana",
+    "district": "Hisar",
+    "market": "Hisar"
+  },
+  {
+    "state": "Haryana",
+    "district": "Gurugram",
+    "market": "Gurugram"
+  },
+  {
+    "state": "Haryana",
+    "district": "Kurukshetra",
+    "market": "Kurukshetra"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Shimla",
+    "market": "Shimla"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Shimla",
+    "market": "Theog"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Shimla",
+    "market": "Rohru"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Solan",
+    "market": "Solan"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Solan",
+    "market": "Parwanoo"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Solan",
+    "market": "Waknaghat"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Solan",
+    "market": "Arki"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Solan",
+    "market": "Dharampur"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Kangra",
+    "market": "Dharamshala"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Kangra",
+    "market": "Palampur"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Kullu",
+    "market": "Kullu"
+  },
+  {
+    "state": "Himachal Pradesh",
+    "district": "Mandi",
+    "market": "Mandi"
+  },
+  {
+    "state": "Uttar Pradesh",
+    "district": "Lucknow",
+    "market": "Lucknow"
+  },
+  {
+    "state": "Uttar Pradesh",
+    "district": "Kanpur",
+    "market": "Kanpur"
+  },
+  {
+    "state": "Uttar Pradesh",
+    "district": "Varanasi",
+    "market": "Varanasi"
+  },
+  {
+    "state": "Uttar Pradesh",
+    "district": "Agra",
+    "market": "Agra"
+  },
+  {
+    "state": "Uttar Pradesh",
+    "district": "Meerut",
+    "market": "Meerut"
+  }
+]

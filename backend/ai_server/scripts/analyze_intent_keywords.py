@@ -12,16 +12,42 @@ load_dotenv()
 # --- CONFIG ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = "llama3-70b-8192"  # Using Llama 3 70B model for high-quality multilingual understanding
-INTENT_LABELS = [
-    "greeting",
-    "weather_query",
-    "crop_query",
-    "pesticide_query",
-    "rate_query",
-    "mandi_query",
-    "price_query",
-    "storage_query",
-    "other"
+AVAILABLE_TOOLS = [
+    {
+        "id": "weather_tool",
+        "name": "Weather Information Tool",
+        "description": "Provides weather forecasts, current conditions, and historical weather data"
+    },
+    {
+        "id": "crop_advisor",
+        "name": "Crop Advisory Tool",
+        "description": "Offers advice on crop selection, planting times, and cultivation practices"
+    },
+    {
+        "id": "pest_control",
+        "name": "Pest Management Tool",
+        "description": "Information on identifying and treating crop pests and diseases"
+    },
+    {
+        "id": "market_prices",
+        "name": "Market Price Tool",
+        "description": "Current and historical crop prices in various markets"
+    },
+    {
+        "id": "mandi_info",
+        "name": "Mandi Information Tool",
+        "description": "Details about local mandis, their operating hours, and available facilities"
+    },
+    {
+        "id": "storage_advisor",
+        "name": "Storage Advisory Tool",
+        "description": "Best practices for crop storage and preservation"
+    },
+    {
+        "id": "general_assistant",
+        "name": "General Assistance",
+        "description": "Basic information and conversation for general queries"
+    }
 ]
 
 # --- GROQ API INTEGRATION ---
@@ -62,44 +88,66 @@ def call_groq_api(prompt: str, model: str = GROQ_MODEL, temperature: float = 0.2
     except requests.RequestException as e:
         raise RuntimeError(f"API request failed: {e}")
 
-# --- INTENT CLASSIFICATION ---
-def classify_intent(text: str, lang_code: str) -> str:
+# --- TOOL SUGGESTION ---
+def suggest_tools(text: str, lang_code: str, max_tools: int = 2) -> List[Dict[str, str]]:
     """
-    Classifies the intent of the given text using Groq API.
+    Suggests relevant tools to help answer the given query using Groq API.
     
     Args:
-        text: The input text to classify
+        text: The input text to analyze
         lang_code: The language code of the input text
+        max_tools: Maximum number of tools to suggest
         
     Returns:
-        The classified intent as a string
+        A list of suggested tools, each as a dictionary with id, name, and description
     """
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Input text must be a non-empty string.")
     if not isinstance(lang_code, str) or len(lang_code) < 2:
         raise ValueError("Language code must be a valid string.")
     
+    # Extract just the tool IDs for the prompt
+    tool_ids = [tool["id"] for tool in AVAILABLE_TOOLS]
+    tool_descriptions = [f"{tool['id']}: {tool['description']}" for tool in AVAILABLE_TOOLS]
+    
     prompt = f"""
-You are an expert in agricultural domain intent classification. 
-Given a query in the language code [{lang_code}], identify the intent from these categories: {", ".join(INTENT_LABELS)}
+You are an expert agricultural assistant that helps farmers by suggesting the most helpful tools for their queries.
+
+These are the tools you have available:
+{chr(10).join(tool_descriptions)}
+
+For the following query in language code [{lang_code}], suggest the {max_tools} most relevant tools from the list above that will best help answer the query.
 
 Query: {text}
 
-Analyze the query and respond with ONLY ONE intent category from the list above. Do not include any explanation.
+Respond with ONLY the tool IDs in a comma-separated list, ordered by relevance. Do not include any explanation or other text.
 """
     
     try:
         response = call_groq_api(prompt)
-        intent_response = response["choices"][0]["message"]["content"].strip().lower()
+        tools_response = response["choices"][0]["message"]["content"].strip().lower()
         
-        # Match the response to one of our intent labels
-        for label in INTENT_LABELS:
-            if label in intent_response:
-                return label
+        # Parse the comma-separated response
+        suggested_tool_ids = [tool_id.strip() for tool_id in tools_response.split(',')]
         
-        return "other"
+        # Match the response to our available tools and return the full tool info
+        suggested_tools = []
+        for tool_id in suggested_tool_ids[:max_tools]:  # Limit to max_tools
+            for tool in AVAILABLE_TOOLS:
+                if tool_id in tool["id"].lower():
+                    suggested_tools.append(tool)
+                    break
+        
+        # If no tools matched or the response was invalid, return the general assistant
+        if not suggested_tools:
+            for tool in AVAILABLE_TOOLS:
+                if tool["id"] == "general_assistant":
+                    suggested_tools.append(tool)
+                    break
+        
+        return suggested_tools
     except Exception as e:
-        raise RuntimeError(f"Intent classification failed: {e}")
+        raise RuntimeError(f"Tool suggestion failed: {e}")
 
 # --- KEYWORD EXTRACTION ---
 def extract_keywords(text: str, top_n: int = 5, lang_code: Optional[str] = None) -> List[str]:
@@ -136,35 +184,40 @@ Respond with ONLY the keywords, one per line, with no additional text, explanati
         # Split by newlines and clean up
         keywords = [kw.strip() for kw in keywords_text.split('\n') if kw.strip()]
         
-        # Limit to top_n
+        # Limit to top_n (ensure top_n is an integer)
+        if not isinstance(top_n, int):
+            top_n = 5  # Default to 5 keywords if top_n is not an integer
+            
         return keywords[:top_n]
     except Exception as e:
         raise RuntimeError(f"Keyword extraction failed: {e}")
 
 # --- MAIN INTEGRATION ---
-def analyze_text(text: str, lang_code: str, top_n_keywords: int = 5) -> Dict[str, object]:
+def analyze_text(text: str, lang_code: str, top_n_keywords: int = 5, max_tools: int = 2) -> Dict[str, object]:
     """
-    Analyzes text to extract intent and keywords using Groq API.
+    Analyzes text to extract suggested tools and keywords using Groq API.
     
     Args:
         text: The input text to analyze
         lang_code: The language code of the input text
         top_n_keywords: The maximum number of keywords to extract
+        max_tools: Maximum number of tools to suggest
         
     Returns:
-        A dictionary containing the intent and keywords
+        A dictionary containing the suggested tools and keywords
     """
-    intent = classify_intent(text, lang_code)
+    tools = suggest_tools(text, lang_code, max_tools=max_tools)
     keywords = extract_keywords(text, top_n=top_n_keywords, lang_code=lang_code)
-    return {"intent": intent, "keywords": keywords}
+    return {"suggested_tools": tools, "keywords": keywords}
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python analyze_intent_keywords.py <text> <lang_code> [top_n_keywords]")
+        print("Usage: python analyze_intent_keywords.py <text> <lang_code> [top_n_keywords] [max_tools]")
         sys.exit(1)
     text = sys.argv[1]
     lang_code = sys.argv[2]
     top_n = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+    max_tools = int(sys.argv[4]) if len(sys.argv) > 4 else 2
     
     # Check for API key
     if not GROQ_API_KEY:
@@ -176,11 +229,21 @@ def main():
         print(f"Analyzing text in language: {lang_code}")
         start_time = time.time()
         
-        result = analyze_text(text, lang_code, top_n)
+        result = analyze_text(text, lang_code, top_n, max_tools)
         
         elapsed_time = time.time() - start_time
         print(f"Analysis completed in {elapsed_time:.2f} seconds")
         
+        # Format the output for better readability
+        print("\nSuggested Tools:")
+        for i, tool in enumerate(result["suggested_tools"], 1):
+            print(f"{i}. {tool['name']}: {tool['description']} (ID: {tool['id']})")
+        
+        print("\nExtracted Keywords:")
+        for i, keyword in enumerate(result["keywords"], 1):
+            print(f"{i}. {keyword}")
+            
+        print("\nComplete JSON Result:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except Exception as e:
         print(f"Error: {e}")

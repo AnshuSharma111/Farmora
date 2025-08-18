@@ -1,9 +1,24 @@
-# add any dependencies required for Whisper ASR and NLP pipeline
+# Dependencies for Farmora AI Server pipeline
+
+# Audio transcription
 whisper
 torch
-numpy
+
+# API and web interactions
 requests
 bs4
 selenium
 webdriver-manager
 python-dotenv
+
+# LLM/API providers
+groq
+huggingface-hub
+
+# Data processing
+numpy
+pathlib
+json
+
+# For development
+pytest

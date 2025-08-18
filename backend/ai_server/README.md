@@ -12,26 +12,35 @@ The AI server implements the following pipeline components:
    - Implements streaming via WebSockets
 
 2. **Intent Classification & Entity Extraction**
-   - Uses XLM-RoBERTa for multi-label classification
-   - Extracts crop names, location mentions, and other entities
+   - Uses Groq API (Llama 3 70B) for intent classification and tool suggestion
+   - Extracts keywords from queries in any language
    - Provides confidence scores for routing decisions
 
 3. **Translation/Normalization**
-   - Uses IndicTrans2 for cross-lingual capabilities
-   - Selectively translates based on tool requirements
+   - Uses Groq API with HuggingFace fallback for high-quality translation
+   - Supports all major Indian languages and many others
    - Preserves entities across translation
+   - Auto-detects source language when needed
 
 4. **Tool Integration**
    - Weather data (Open-Meteo API)
-   - Market prices (AGMARKNET API)
-   - Disease identification
-   - Government schemes
-   - Soil health recommendations
+   - Commodity price data (Enhanced AGMARKNET scraping with robust features)
+     - Complete database of all Indian states, districts, and markets
+     - Smart geographical proximity-based market selection
+     - Automatic district name normalization (e.g., Hisar/Hissar, Gurugram/Gurgaon)
+     - Multiple fallback mechanisms for reliable data retrieval
+     - Seasonal crop information when price data isn't available
+     - Supports multi-commodity lookup in a single request
+   - Translation services for multilingual support
+   - Geolocation services with offline fallback
+   - (Planned) Disease identification
+   - (Planned) Government schemes
+   - (Planned) Soil health recommendations
 
 5. **LLM Generation**
-   - Uses Mistral/Gemma models for response synthesis
-   - Implements fallback to API LLMs for complex queries
+   - Uses Groq API (Llama 3 70B) for response synthesis
    - Optimizes prompts for agricultural domain
+   - Provides multilingual response capabilities
 
 6. **Moderator**
    - Validates outputs at each step
@@ -42,28 +51,25 @@ The AI server implements the following pipeline components:
 
 ```
 ai_server/
-├── main.py                  # FastAPI application entry point
-├── auth.py                  # Authentication with Appwrite
-├── config.py                # Configuration management
-├── monitoring/              # Logging and monitoring components
-├── models/                  # ML model wrappers
-│   ├── asr/                 # Speech recognition (Whisper)
-│   ├── intent/              # Intent classification (XLM-R)
-│   ├── translation/         # Translation models (IndicTrans2)
-│   └── llm/                 # Language models (Mistral/Gemma)
-├── pipeline/                # Pipeline orchestration
-│   ├── moderator.py         # Validation and recovery logic
-│   ├── router.py            # Request routing logic
-│   └── streaming.py         # Streaming implementation
+├── DOCUMENTATION.MD         # Detailed function documentation
+├── README.md                # This file
+├── requirements.txt         # Dependencies
+├── scripts/                 # Core script components
+│   ├── analyze_intent_keywords.py  # Intent classification and keyword extraction
+│   ├── batch_transcribe_and_analyze.py  # Batch processing utilities
+│   ├── identify_intent_keyword.py  # Legacy code
+│   ├── keyword_extraction_keybert.py  # Legacy code
+│   ├── transcribe_whisper.py  # Audio transcription with Whisper
+│   ├── translate.py         # Translation functionality
+│   └── processing.py        # Main pipeline integration
 ├── tools/                   # External data sources
-│   ├── weather.py           # Weather data integration
-│   ├── markets.py           # Price data integration
-│   ├── diseases.py          # Disease identification
-│   ├── schemes.py           # Government scheme lookup
-│   └── soil.py              # Soil health recommendations
-├── schemas/                 # Data models and schemas
-├── utils/                   # Utility functions
-└── tests/                   # Test suite
+│   ├── weather_api.py       # Weather data integration
+│   ├── scrape_commodity.py  # Price data scraping from AGMARKNET
+│   └── (future tools)       # Disease identification, government schemes, etc.
+└── test/                    # Test scripts and examples
+    ├── batch_transcribe_and_analyze.py  # Batch testing
+    ├── test_processing.py   # End-to-end pipeline tests
+    └── test_translate.py    # Translation functionality tests
 ```
 
 ## Setup and Installation
