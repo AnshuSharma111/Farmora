@@ -82,4 +82,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.3.9")
 
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // SplashScreen API for Android 12+
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Lottie Animation for voice waveform
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
 }
