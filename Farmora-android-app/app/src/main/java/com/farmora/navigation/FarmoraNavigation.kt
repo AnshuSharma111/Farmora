@@ -13,10 +13,12 @@ import com.farmora.presentation.auth.AuthviewModel
 import com.farmora.presentation.auth.login.LoginScreen
 import com.farmora.presentation.auth.signup.SignUpScreen
 import com.farmora.presentation.home.HomeScreen
+import com.farmora.presentation.loading.LoadingScreen
 import com.farmora.presentation.onboarding.navigation.OnboardingNavigation
 
 
 sealed class Screen(val route: String) {
+    object Loading : Screen("loading")
     object Login : Screen("login")
     object SignUp : Screen("signup")
     object Onboarding : Screen("onboarding")
@@ -31,19 +33,29 @@ fun FarmoraNavigation(
 ) {
     val uiState by authViewModel.uiState.collectAsState()
 
-    // Temporarily set onboarding as start destination for testing
-    val startDestination = Screen.Onboarding.route
-
-    // Original logic (restore after testing):
-    // val startDestination = when {
-    //     uiState.isLoggedIn -> Screen.Home.route
-    //     else -> Screen.Login.route
-    // }
+    // Start with loading screen
+    val startDestination = Screen.Loading.route
 
     NavHost(navController = navController,
         startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.Loading.route) {
+            LoadingScreen(
+                onLoadingComplete = {
+                    // Determine where to navigate after loading
+                    val nextDestination = when {
+                        uiState.isLoggedIn -> Screen.Home.route
+                        else -> Screen.Login.route
+                    }
+
+                    navController.navigate(nextDestination) {
+                        popUpTo(Screen.Loading.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Login.route) {
             LoginScreen(
                 modifier,
