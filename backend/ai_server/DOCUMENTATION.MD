@@ -77,3 +77,43 @@ print(result)
 #   'keywords': ['मौसम', 'जानकारी']
 # }
 ```
+
+# Tools
+
+## 1. Weather API
+**Location:** `tools/weather_api.py`
+
+**Description:**
+Fetches current weather data for a given latitude and longitude using the Open-Meteo API.
+
+**Signature:**
+```python
+def get_weather(lat: float, lon: float) -> dict
+```
+
+**Parameters:**
+- `lat` (float): Latitude of the location.
+- `lon` (float): Longitude of the location.
+
+**Returns:**
+- `dict`: Dictionary containing current weather data as returned by the API (e.g., temperature, windspeed, etc.)
+
+**Raises:**
+- `Exception`: If the API call fails or returns an error, or if no weather data is found.
+
+**Example Usage:**
+```python
+from tools.weather_api import get_weather
+
+weather = get_weather(28.6139, 77.2090)  # Example: New Delhi coordinates
+print(weather)
+# Output (example):
+# {
+#   'temperature': 34.2,
+#   'windspeed': 5.1,
+#   'winddirection': 120,
+#   'weathercode': 1,
+#   'is_day': 1,
+#   'time': '2025-08-18T12:00'
+# }
+```
