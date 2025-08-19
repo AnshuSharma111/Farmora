@@ -22,3 +22,6 @@ json
 
 # For development
 pytest
+
+# geo-utilities
+geopy

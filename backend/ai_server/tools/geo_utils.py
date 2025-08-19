@@ -73,54 +73,8 @@ def get_location_info(lat: float, lon: float) -> Dict:
     Returns:
         Dictionary with location details including state, district, and other admin levels
     """
-    # Predefined location cache for common coordinates to handle network issues
-    location_cache = {
-        # Punjab locations
-        (30.7463, 76.6469): {"address": {"state": "Punjab", "county": "Kharar"}},
-        (30.9010, 75.8573): {"address": {"state": "Punjab", "county": "Ludhiana"}},
-        (31.6340, 74.8723): {"address": {"state": "Punjab", "county": "Amritsar"}},
-        (30.3398, 76.3869): {"address": {"state": "Punjab", "county": "Patiala"}},
-        (31.3260, 75.5762): {"address": {"state": "Punjab", "county": "Jalandhar"}},
-    
-        # Haryana locations
-        (28.4595, 77.0266): {"address": {"state": "Haryana", "county": "Gurugram"}},
-        (29.7051, 76.9734): {"address": {"state": "Haryana", "county": "Karnal"}},
-        (28.4089, 77.3178): {"address": {"state": "Haryana", "county": "Faridabad"}},
-        
-        # Himachal Pradesh locations
-        (31.1048, 77.1734): {"address": {"state": "Himachal Pradesh", "county": "Shimla"}},
-        (32.2396, 76.3219): {"address": {"state": "Himachal Pradesh", "county": "Kangra"}},
-        
-        # Default for unknown locations
-        (0, 0): {"address": {"state": "Delhi", "county": "New Delhi"}}
-    }
-    
-    # Check if we have cached data for these exact coordinates
-    if (lat, lon) in location_cache:
-        return location_cache[(lat, lon)]
-    
-    # Find the closest match for approximate coordinates
-    closest_coords = None
-    min_distance = float('inf')
-    
-    for coords in location_cache:
-        # Skip the default coordinates
-        if coords == (0, 0):
-            continue
-            
-        # Calculate distance between input coordinates and cached coordinates
-        dist = calculate_distance((lat, lon), coords)
-        
-        # If within a reasonable threshold (approximately 10-15km)
-        if dist < 15 and dist < min_distance:
-            min_distance = dist
-            closest_coords = coords
-    
-    # If we found a close match, use it
-    if closest_coords:
-        return location_cache[closest_coords]
-    
-    # If no cached data found, try the API
+
+    # Try the API
     params = {
         "lat": lat,
         "lon": lon,
@@ -129,11 +83,11 @@ def get_location_info(lat: float, lon: float) -> Dict:
         "zoom": 10,
         "accept-language": "en"
     }
-    
+
     headers = {
         "User-Agent": "Farmora/1.0 (farmora.app; contact@farmora.app)"
     }
-    
+
     try:
         response = requests.get(NOMINATIM_API, params=params, headers=headers)
         response.raise_for_status()
@@ -143,19 +97,9 @@ def get_location_info(lat: float, lon: float) -> Dict:
             raise RuntimeError("No address information found in the API response")
             
         return data
-        
-    except Exception:
-        # Determine rough region based on coordinates
-        if 27 <= lat <= 32 and 73 <= lon <= 78:
-            if lat > 30.5:
-                return location_cache[(30.9010, 75.8573)]  # Punjab (Ludhiana)
-            elif lon > 76:
-                return location_cache[(31.1048, 77.1734)]  # Himachal Pradesh (Shimla)
-            else:
-                return location_cache[(28.4595, 77.0266)]  # Haryana (Gurugram)
-        else:
-            # Default fallback
-            return location_cache[(0, 0)]
+
+    except Exception as e:
+        raise e
 
 def get_state_district(lat: float, lon: float) -> Tuple[str, Optional[str]]:
     """
@@ -172,7 +116,7 @@ def get_state_district(lat: float, lon: float) -> Tuple[str, Optional[str]]:
     nearest_location = get_nearest_location_from_database(lat, lon)
     if nearest_location:
         return nearest_location["state"], nearest_location["district"]
-    
+
     # If that fails, fall back to the location API
     location_data = get_location_info(lat, lon)
     address = location_data.get("address", {})
@@ -219,73 +163,9 @@ def normalize_district_name(district: str) -> str:
     # Create a pattern to match any of these suffixes at the end of the string
     pattern = r"\s+(?:" + "|".join(suffixes) + r")\b"
     cleaned_district = re.sub(pattern, "", district, flags=re.IGNORECASE)
-    
-    # Convert to lowercase for case-insensitive matching
-    district_lower = cleaned_district.lower().strip()
-    
-    # Define common district name mappings, expanded from the previous version
-    district_mappings = {
-        # Punjab
-        "kharar": "Mohali",      # Kharar is in Mohali district
-        "mohali": "Mohali",
-        "sas nagar": "Mohali",   # SAS Nagar is the official name of Mohali
-        "sahibzada ajit singh nagar": "Mohali",
-        "s.a.s. nagar": "Mohali",
-        "kapurthala": "Kapurthala",
-        "jalandhar": "Jalandhar",
-        "ludhiana": "Ludhiana",
-        "patiala": "Patiala",
-        "amritsar": "Amritsar",
-        "firozpur": "Ferozepur",  # Handle alternate spellings
-        "ferozepur": "Ferozepur",
-        "faridkot": "Faridkot",
-        "hoshiarpur": "Hoshiarpur",
-        "mansa": "Mansa",
-        "moga": "Moga",
-        "muktsar": "Sri Muktsar Sahib",
-        "sri muktsar sahib": "Sri Muktsar Sahib",
-        "nawanshahr": "Shahid Bhagat Singh Nagar",
-        "shahid bhagat singh nagar": "Shahid Bhagat Singh Nagar",
-        "sbs nagar": "Shahid Bhagat Singh Nagar",
-        
-        # Haryana
-        "gurugram": "Gurugram",
-        "gurgaon": "Gurugram",  # Old name
-        "karnal": "Karnal",
-        "ambala": "Ambala",
-        "hisar": "Hisar",
-        "faridabad": "Faridabad",
-        "panipat": "Panipat",
-        "bhiwani": "Bhiwani",
-        "jhajjar": "Jhajjar",
-        "jind": "Jind",
-        "kaithal": "Kaithal",
-        "kurukshetra": "Kurukshetra",
-        "mahendragarh": "Mahendragarh",
-        "palwal": "Palwal",
-        "rewari": "Rewari",
-        "rohtak": "Rohtak",
-        "sirsa": "Sirsa",
-        "sonipat": "Sonipat",
-        
-        # Himachal Pradesh
-        "shimla": "Shimla",
-        "solan": "Solan",
-        "kangra": "Kangra",
-        "una": "Una",
-        "hamirpur": "Hamirpur",
-        "bilaspur": "Bilaspur",
-        "mandi": "Mandi",
-        "kullu": "Kullu",
-        "lahaul and spiti": "Lahaul and Spiti",
-        "lahaul spiti": "Lahaul and Spiti",
-        "kinnaur": "Kinnaur",
-        "chamba": "Chamba",
-        "sirmaur": "Sirmaur",
-    }
-    
+
     # Return the normalized name if found, otherwise return the cleaned district
-    return district_mappings.get(district_lower, cleaned_district)
+    return cleaned_district
 
 def load_market_database() -> Dict:
     """
@@ -331,7 +211,7 @@ def get_nearest_location_from_database(lat: float, lon: float) -> Dict:
     geocoded_markets = load_geocoded_markets()
     if not geocoded_markets:
         return {}
-        
+    
     nearest_market = None
     nearest_distance = float('inf')
     nearest_state = None
@@ -397,64 +277,9 @@ def get_nearest_markets(state: str, district: str, commodity: str = None) -> Lis
             if district_data and "markets" in district_data:
                 # Return all markets in this district
                 return list(district_data["markets"].keys())
-    
-    # Fallback to hardcoded values
-    # Dictionary of states -> districts -> markets
-    markets_by_district = {
-        "Punjab": {
-            "Ludhiana": ["Ludhiana", "Khanna", "Jagraon"],
-            "Amritsar": ["Amritsar", "Jandiala", "Rayya"],
-            "Patiala": ["Patiala", "Rajpura", "Nabha"],
-            "Mohali": ["Sri Har Gobindpur", "Kharar", "Mohali"],
-            "Kapurthala": ["Kapurthala", "Sultanpur Lodhi", "Phagwara"],
-            "Jalandhar": ["Jalandhar", "Phillaur", "Nakodar"],
-            "Bathinda": ["Bathinda", "Rampura Phul", "Talwandi Sabo"],
-            "Gurdaspur": ["Gurdaspur", "Batala", "Dera Baba Nanak"],
-            "Hoshiarpur": ["Hoshiarpur", "Garhshankar", "Dasuya"],
-            "Fatehgarh": ["Fatehgarh", "Amloh", "Bassi Pathana"]
-        },
-        "Haryana": {
-            "Karnal": ["Karnal", "Assandh", "Taraori"],
-            "Ambala": ["Ambala", "Naraingarh", "Barara"],
-            "Hisar": ["Hisar", "Hansi", "Barwala"],
-            "Gurugram": ["Gurugram", "Sohna", "Pataudi"],
-            "Faridabad": ["Faridabad", "Ballabgarh", "Palwal"],
-            "Panipat": ["Panipat", "Samalkha", "Israna"]
-        },
-        "Himachal Pradesh": {
-            "Shimla": ["Shimla", "Theog", "Rohru"],
-            "Solan": ["Solan", "Arki", "Kasauli"],
-            "Mandi": ["Mandi", "Sundernagar", "Jogindernagar"],
-            "Kangra": ["Dharamshala", "Palampur", "Kangra"],
-            "Kullu": ["Kullu", "Manali", "Bhuntar"]
-        },
-        "Uttar Pradesh": {
-            "Lucknow": ["Lucknow", "Bakshi ka Talab", "Mohanlalganj"],
-            "Kanpur": ["Kanpur", "Bilhaur", "Ghatampur"],
-            "Agra": ["Agra", "Fatehpur Sikri", "Etmadpur"]
-        }
-    }
-    
-    # If we have markets for this state and normalized district
-    if state in markets_by_district and normalized_district in markets_by_district[state]:
-        print(f"Found markets in {normalized_district}, {state}")
-        return markets_by_district[state][normalized_district]
-    
-    # Try with original district name if normalized didn't match
-    if state in markets_by_district and district in markets_by_district[state]:
-        print(f"Found markets in {district}, {state}")
-        return markets_by_district[state][district]
-    
-    # If we have the state but not the district
-    if state in markets_by_district:
-        # Return markets from the first district we have
-        first_district = next(iter(markets_by_district[state]))
-        print(f"Warning: District '{district}' not found in {state}. Using '{first_district}' instead.")
-        return markets_by_district[state][first_district]
         
     # Fallback to default markets
-    print(f"Warning: No markets found for {state}. Using default markets.")
-    return ["Nearest Market", "Central Market", "Regional Market"]
+    return []
 
 
 def find_markets_by_coordinates(lat: float, lon: float, commodity: str = None) -> List[str]:
@@ -505,37 +330,13 @@ def find_markets_by_coordinates(lat: float, lon: float, commodity: str = None) -
     state, district = get_state_district(lat, lon)
     return get_nearest_markets(state, district, commodity)
 
-def get_common_crops(lat: float, lon: float) -> List[str]:
-    """
-    Returns a list of common crops grown in the region near the provided coordinates.
-    This is a simplified implementation - a real implementation would use climate data,
-    soil types, and actual agricultural data.
-    
-    Args:
-        lat: Latitude coordinate
-        lon: Longitude coordinate
-        
-    Returns:
-        List of common crop names in the region
-    """
-    # For demonstration, using a simplified approach based on rough geographical regions
-    # In a real implementation, this would be much more sophisticated
-    
-    # North India
-    if lat > 28.0:
-        if lon < 77.0:  # Northwest (Punjab, Haryana)
-            return ["Wheat", "Rice", "Cotton", "Maize"]
-        else:  # Northeast (UP, Bihar)
-            return ["Rice", "Wheat", "Sugarcane", "Potato"]
-    # Central India
-    elif lat > 20.0:
-        if lon < 78.0:  # West Central (Maharashtra, Gujarat)
-            return ["Cotton", "Groundnut", "Sorghum", "Millet"]
-        else:  # East Central (Odisha, Jharkhand)
-            return ["Rice", "Maize", "Pulses", "Oilseeds"]
-    # South India
-    else:
-        if lon < 78.0:  # Southwest (Karnataka, Kerala)
-            return ["Coffee", "Spices", "Rice", "Coconut"]
-        else:  # Southeast (Tamil Nadu, Andhra Pradesh)
-            return ["Rice", "Sugarcane", "Groundnut", "Cotton"]
+def main():
+    # test
+    print("Getting location info for various coordinates: ")
+    coords = [
+        [30.74632, 76.64689],
+        [31.583, 78.417]
+    ]
+
+if __name__ == "__main__":
+    main()
