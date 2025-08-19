@@ -10,8 +10,9 @@ This is the backend for the Farmora application, consisting of two server compon
 ```
 backend/
 ├── ai_server/           # Python FastAPI server for AI processing
-│   ├── main.py          # Main FastAPI application
-│   ├── local_model.py   # Local model for intent classification
+│   ├── scripts          # Main scripts
+│   ├── tools            # All tools the LLM can use
+|   ├── server           # files for the server
 │   └── requirements.txt # Python dependencies
 │
 └── client_server/       # Node.js Express server for client logic
