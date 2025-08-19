@@ -6,10 +6,9 @@ geographical coordinates, and to find the nearest market to a given location.
 """
 
 import requests
-import json
-import os
 import math
-from typing import Dict, Tuple, Optional, List, Any
+import json
+from typing import Tuple, Optional, Dict, List, Any
 from pathlib import Path
 
 # We'll use OpenStreetMap's Nominatim API for reverse geocoding
@@ -18,8 +17,24 @@ NOMINATIM_API = "https://nominatim.openstreetmap.org/reverse"
 
 # Define paths to data files
 DATA_DIR = Path(__file__).parent.parent / "data"
-MARKETS_FILE = DATA_DIR / "markets_database.json"
-GEOCODED_MARKETS_FILE = DATA_DIR / "geocoded_markets.json"
+MARKETS_FILE = DATA_DIR / "geocoded_markets.json"
+
+def load_market_data() -> Dict[str, Dict[str, Dict[str, List[float]]]]:
+    """
+    Load market data from the geocoded_markets.json file.
+    
+    Returns:
+        Nested dictionary with market data organized by state, district, and market name
+    """
+    try:
+        with open(MARKETS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: Market data file not found at {MARKETS_FILE}")
+        return {}
+    except json.JSONDecodeError:
+        print(f"Warning: Invalid JSON in market data file {MARKETS_FILE}")
+        return {}
 
 def calculate_distance(coord1: Tuple[float, float], coord2: Tuple[float, float]) -> float:
     """
@@ -62,19 +77,19 @@ def calculate_distance(coord1: Tuple[float, float], coord2: Tuple[float, float])
         
         return distance
 
-def get_location_info(lat: float, lon: float) -> Dict:
+def get_state_district(lat: float, lon: float) -> Tuple[str, Optional[str]]:
     """
-    Get location information for given latitude and longitude using reverse geocoding.
+    Get the state and district name for given latitude and longitude.
     
     Args:
         lat: Latitude coordinate
         lon: Longitude coordinate
     
     Returns:
-        Dictionary with location details including state, district, and other admin levels
+        Tuple of (state_name, district_name) where district_name may be None if not found
     """
 
-    # Try the API
+    # Hit the location API
     params = {
         "lat": lat,
         "lon": lon,
@@ -96,247 +111,169 @@ def get_location_info(lat: float, lon: float) -> Dict:
         if "address" not in data:
             raise RuntimeError("No address information found in the API response")
             
-        return data
+        address = data.get("address", {})
 
+        if not address:
+            return {}
+
+        result = {"State" : address.get('state'), "County": address.get('county'), "District": address.get('state_district')}
+        
+        return result
     except Exception as e:
         raise e
 
-def get_state_district(lat: float, lon: float) -> Tuple[str, Optional[str]]:
+def get_nearest_market(lat: float, lon: float, debug: bool = False) -> Dict[str, Any]:
     """
-    Get the state and district name for given latitude and longitude.
+    Find the nearest market to the given coordinates.
     
     Args:
         lat: Latitude coordinate
         lon: Longitude coordinate
-    
-    Returns:
-        Tuple of (state_name, district_name) where district_name may be None if not found
-    """
-    # First try using the geocoded markets database for more accurate results
-    nearest_location = get_nearest_location_from_database(lat, lon)
-    if nearest_location:
-        return nearest_location["state"], nearest_location["district"]
-
-    # If that fails, fall back to the location API
-    location_data = get_location_info(lat, lon)
-    address = location_data.get("address", {})
-    
-    # In India, the state is typically in the "state" field
-    state = address.get("state")
-    
-    # District can be in "county", "district", or "state_district" depending on the region
-    district = (
-        address.get("county") or 
-        address.get("district") or 
-        address.get("state_district")
-    )
-    
-    # Clean up the district name using our normalize function
-    if district:
-        district = normalize_district_name(district)
-    
-    if not state:
-        # Fallback to a default state if we couldn't determine it
-        state = "Punjab"
-    
-    return state, district
-
-def normalize_district_name(district: str) -> str:
-    """
-    Normalizes district names by handling common variations, alternate spellings, 
-    and removing suffixes like Tahsil, District, etc.
-    
-    Args:
-        district: District name to normalize
+        debug: Print debug information during search
         
     Returns:
-        Normalized district name
+        Dictionary with details of the nearest market or empty dict if none found
     """
-    import re
-    
-    if not district:
-        return ""
-    
-    # First, remove common suffixes like "Tahsil", "District", etc.
-    suffixes = ["Tahsil", "District", "Tehsil", "Taluka", "Division", "Taluk", "Mandal", "Subdivision"]
-    
-    # Create a pattern to match any of these suffixes at the end of the string
-    pattern = r"\s+(?:" + "|".join(suffixes) + r")\b"
-    cleaned_district = re.sub(pattern, "", district, flags=re.IGNORECASE)
-
-    # Return the normalized name if found, otherwise return the cleaned district
-    return cleaned_district
-
-def load_market_database() -> Dict:
-    """
-    Load the market database from file.
-    
-    Returns:
-        Dictionary containing the market database or empty dict if not found
-    """
-    if os.path.exists(MARKETS_FILE):
-        try:
-            with open(MARKETS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
-
-def load_geocoded_markets() -> Dict:
-    """
-    Load the geocoded markets database from file.
-    
-    Returns:
-        Dictionary containing the geocoded markets or empty dict if not found
-    """
-    if os.path.exists(GEOCODED_MARKETS_FILE):
-        try:
-            with open(GEOCODED_MARKETS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
-
-def get_nearest_location_from_database(lat: float, lon: float) -> Dict:
-    """
-    Find the nearest state, district, and market from the geocoded markets database.
-    
-    Args:
-        lat: Latitude coordinate
-        lon: Longitude coordinate
+    try:
+        # Get location info
+        state_district_data = get_state_district(lat, lon)
+        state = state_district_data.get("State")
+        district = state_district_data.get("District")
+        county = state_district_data.get("County")
         
-    Returns:
-        Dictionary with the nearest state, district, and market, or empty dict if not found
-    """
-    geocoded_markets = load_geocoded_markets()
-    if not geocoded_markets:
-        return {}
-    
-    nearest_market = None
-    nearest_distance = float('inf')
-    nearest_state = None
-    nearest_district = None
-    
-    for state_name, districts in geocoded_markets.items():
-        for district_name, markets in districts.items():
-            for market_name, coords in markets.items():
-                market_lat, market_lon = coords
-                distance = calculate_distance((lat, lon), (market_lat, market_lon))
-                
-                if distance < nearest_distance:
-                    nearest_distance = distance
-                    nearest_market = market_name
-                    nearest_state = state_name
-                    nearest_district = district_name
-    
-    if nearest_state:
-        return {
-            "market": nearest_market,
-            "district": nearest_district,
-            "state": nearest_state,
-            "distance_km": nearest_distance
-        }
-    
-    return {}
-
-def get_nearest_markets(state: str, district: str, commodity: str = None) -> List[str]:
-    """
-    Returns a list of markets in the given district.
-    First tries to use the market database, and falls back to hardcoded values if not available.
-    
-    Args:
-        state: State name
-        district: District name
-        commodity: Optional commodity name (not used in current implementation)
+        if debug:
+            print(f"Location info: State={state}, District={district}, County={county}")
         
-    Returns:
-        List of market names in the district
-    """
-    # Normalize the district name to handle variations
-    normalized_district = normalize_district_name(district)
-    
-    # Try to use the market database first
-    market_data = load_market_database()
-    
-    if market_data and "states" in market_data:
-        # Find the state
-        state_data = None
-        for state_name, state_info in market_data["states"].items():
-            if state_name.lower() == state.lower():
-                state_data = state_info
-                break
-                
-        if state_data and "districts" in state_data:
-            # Find the district
-            district_data = None
-            for district_name, district_info in state_data["districts"].items():
-                if district_name.lower() == normalized_district.lower():
-                    district_data = district_info
-                    break
+        # Load market data
+        markets_data = load_market_data()
+        if not markets_data:
+            print("No market data found")
+            return {}
+        
+        # Create a list to store all potential markets with their distances
+        all_markets = []
+        
+        # If we have state info, try to search within that state first
+        if state and state in markets_data:
+            search_states = [state]
+            if debug:
+                print(f"Searching in state: {state}")
+        else:
+            # Otherwise search all states
+            search_states = markets_data.keys()
+            if debug:
+                print(f"State not found in market data. Searching in all {len(search_states)} states")
+        
+        # Search through all relevant states
+        for state_name in search_states:
+            state_markets = markets_data.get(state_name, {})
             
-            if district_data and "markets" in district_data:
-                # Return all markets in this district
-                return list(district_data["markets"].keys())
-        
-    # Fallback to default markets
-    return []
-
-
-def find_markets_by_coordinates(lat: float, lon: float, commodity: str = None) -> List[str]:
-    """
-    Find markets near the given coordinates that sell the specified commodity.
-    
-    Args:
-        lat: Latitude coordinate
-        lon: Longitude coordinate
-        commodity: Optional commodity name to filter by
-        
-    Returns:
-        List of market names near the coordinates
-    """
-    # First find the nearest location (state and district)
-    nearest_location = get_nearest_location_from_database(lat, lon)
-    
-    if nearest_location:
-        # If we found a market in the database, get all markets in that district
-        state = nearest_location["state"]
-        district = nearest_location["district"]
-        
-        # Load the markets for this state and district
-        market_data = load_market_database()
-        
-        if market_data and "states" in market_data:
-            # Find the state
-            if state in market_data["states"]:
-                state_data = market_data["states"][state]
+            # If we have district info and it exists in the state data, search there first
+            if district and district in state_markets:
+                search_districts = [district]
+                if debug:
+                    print(f"  Searching in district: {district} within {state_name}")
+            elif county and county in state_markets:
+                search_districts = [county]
+                if debug:
+                    print(f"  Searching in county: {county} within {state_name}")
+            else:
+                # Otherwise search all districts in this state
+                search_districts = state_markets.keys()
+                if debug:
+                    print(f"  District/County not found in {state_name}. Searching in all {len(search_districts)} districts")
+            
+            # Search through relevant districts
+            for district_name in search_districts:
+                district_markets = state_markets.get(district_name, {})
                 
-                # Find the district
-                if "districts" in state_data and district in state_data["districts"]:
-                    district_data = state_data["districts"][district]
+                if debug:
+                    print(f"    Checking {len(district_markets)} markets in {district_name}")
+                
+                # Search through each market in this district
+                for market_name, coords in district_markets.items():
+                    # Skip markets with invalid or empty coordinates
+                    if not coords or len(coords) < 2:
+                        continue
                     
-                    # Get all markets in this district
-                    if "markets" in district_data:
-                        markets = list(district_data["markets"].keys())
+                    # Some entries might have only one coordinate or might be empty arrays
+                    try:
+                        # Make sure coordinates are valid numbers
+                        if coords[0] is None or coords[1] is None:
+                            continue
+                            
+                        market_lat = float(coords[0])
+                        market_lon = float(coords[1])
                         
-                        # Return the found markets, with the nearest one first
-                        if nearest_location["market"] in markets:
-                            # Reorder to put the nearest market first
-                            markets.remove(nearest_location["market"])
-                            markets.insert(0, nearest_location["market"])
+                        # Check if the coordinates make sense (basic validation)
+                        if not (-90 <= market_lat <= 90) or not (-180 <= market_lon <= 180):
+                            continue
                         
-                        return markets
-    
-    # If we couldn't find markets in the database, fall back to traditional method
-    state, district = get_state_district(lat, lon)
-    return get_nearest_markets(state, district, commodity)
+                        # Calculate distance
+                        market_coords = (market_lat, market_lon)
+                        user_coords = (lat, lon)
+                        distance = calculate_distance(user_coords, market_coords)
+                        
+                        # Store market info
+                        all_markets.append({
+                            "market_name": market_name,
+                            "state": state_name,
+                            "district": district_name,
+                            "latitude": market_lat,
+                            "longitude": market_lon,
+                            "distance_km": distance
+                        })
+                        
+                    except (IndexError, TypeError, ValueError):
+                        continue
+        
+        # Sort all markets by distance to get the truly nearest one
+        all_markets.sort(key=lambda x: x["distance_km"])
+        
+        # Return results using the first market from the sorted list
+        if all_markets:
+            nearest = all_markets[0]
+            return {
+                "market_name": nearest["market_name"],
+                "state": nearest["state"],
+                "district": nearest["district"],
+                "latitude": nearest["latitude"],
+                "longitude": nearest["longitude"],
+                "distance_km": round(nearest["distance_km"], 2)
+            }
+        else:
+            return {}
+            
+    except Exception as e:
+        print(f"Error finding nearest market: {e}")
+        return {}
 
 def main():
     # test
     print("Getting location info for various coordinates: ")
     coords = [
-        [30.74632, 76.64689],
-        [31.583, 78.417]
+        [30.764782, 76.573887, "Chandigarh Region"],
     ]
+
+    for i, (lat, lon, desc) in enumerate(coords):
+        print(f"\nCoordinate {i} ({desc}):")
+        print(f"Latitude: {lat}, Longitude: {lon}")
+        
+        # Get and print the location info
+        loc_info = get_state_district(lat, lon)
+        print(f"Location data from API: {loc_info}")
+        
+        # Get nearest market
+        res = get_nearest_market(lat, lon, debug=True)
+        
+        if res:
+            print(f"\nNearest market found: {res['market_name']}")
+            print(f"State: {res['state']}")
+            print(f"District: {res['district']}")
+            print(f"Coordinates: ({res['latitude']}, {res['longitude']})")
+            print(f"Distance: {res['distance_km']} km")
+        else:
+            print("\nNo market found!")
 
 if __name__ == "__main__":
     main()
