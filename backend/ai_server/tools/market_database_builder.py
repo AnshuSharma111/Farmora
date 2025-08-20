@@ -11,7 +11,7 @@ import json
 import os
 import math
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Any
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -19,6 +19,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import requests
 
 # Try to import geopy for distance calculation, but provide fallback if not available
 try:
@@ -205,63 +206,110 @@ def load_market_data():
 
 def geocode_markets(market_data):
     """
-    Add approximate geographic coordinates to each market.
+    Add geographic coordinates to each market using Nominatim geocoding service.
     
-    For a production system, you would use a geocoding service like Google Maps or Nominatim.
-    Here, we'll use approximate coordinates based on the district center.
+    This uses the OpenStreetMap Nominatim API to get more accurate coordinates
+    for markets based on their names and locations (state and district).
     """
-    # Create dummy geocoded data (this would normally come from a geocoding service)
+    # Create geocoded data structure
     # Format: {"State": {"District": {"Market": [lat, lon]}}
-    
-    # Define coordinates for state centers (approximate)
-    state_coords = {
-        "Punjab": [30.9010, 75.8573],          # Ludhiana
-        "Haryana": [29.0588, 76.0856],          # Rohtak
-        "Himachal Pradesh": [31.1048, 77.1734], # Shimla
-        "Uttar Pradesh": [26.8467, 80.9462],    # Lucknow
-        "Maharashtra": [19.0760, 72.8777],      # Mumbai
-        "Karnataka": [12.9716, 77.5946],        # Bangalore
-        "Tamil Nadu": [13.0827, 80.2707],       # Chennai
-        "Gujarat": [23.0225, 72.5714],          # Ahmedabad
-        "Rajasthan": [26.9124, 75.7873],        # Jaipur
-        "Bihar": [25.5941, 85.1376],            # Patna
-        # Add more states as needed
-    }
-    
-    # Small offsets to distribute markets around district centers
-    offsets = [
-        [0.05, 0.05], [-0.05, 0.05], [0.05, -0.05], [-0.05, -0.05],
-        [0.1, 0], [-0.1, 0], [0, 0.1], [0, -0.1],
-        [0.15, 0.15], [-0.15, 0.15], [0.15, -0.15], [-0.15, -0.15]
-    ]
-    
     geocoded_markets = {}
+    
+    # Nominatim API endpoint for geocoding
+    geocode_url = "https://nominatim.openstreetmap.org/search"
+    
+    # Track markets that couldn't be geocoded
+    failed_geocodes = []
     
     for state_name, state_data in market_data["states"].items():
         geocoded_markets[state_name] = {}
-        state_lat, state_lon = state_coords.get(state_name, [20.5937, 78.9629])  # Default to center of India
         
         for district_name, district_data in state_data["districts"].items():
             geocoded_markets[state_name][district_name] = {}
             
-            # Use a simple algorithm to distribute district centers around the state
-            # This is just for demonstration - in production, use actual geocoding
-            district_hash = sum(ord(c) for c in district_name)
-            district_idx = district_hash % len(offsets)
-            district_offset = offsets[district_idx]
-            
-            district_lat = state_lat + district_offset[0]
-            district_lon = state_lon + district_offset[1]
-            
-            market_idx = 0
             for market_name in district_data["markets"].keys():
-                # Distribute markets around the district center
-                market_offset = offsets[market_idx % len(offsets)]
-                market_lat = district_lat + market_offset[0] * 0.5
-                market_lon = district_lon + market_offset[1] * 0.5
+                # Try to geocode the market using its name, district, and state
+                search_query = f"{market_name}, {district_name}, {state_name}, India"
                 
-                geocoded_markets[state_name][district_name][market_name] = [market_lat, market_lon]
-                market_idx += 1
+                # Prepare API request parameters
+                params = {
+                    "q": search_query,
+                    "format": "json",
+                    "limit": 1,
+                    "addressdetails": 1
+                }
+                
+                # Add a User-Agent header to comply with Nominatim usage policy
+                headers = {
+                    "User-Agent": "Farmora/1.0 (farmora.app; contact@farmora.app)"
+                }
+                
+                try:
+                    # Make the API request
+                    response = requests.get(geocode_url, params=params, headers=headers)
+                    response.raise_for_status()
+                    results = response.json()
+                    
+                    # Sleep to respect rate limits (1 request per second is recommended)
+                    time.sleep(1)
+                    
+                    if results:
+                        # Extract coordinates from the first result
+                        lat = float(results[0]["lat"])
+                        lon = float(results[0]["lon"])
+                        geocoded_markets[state_name][district_name][market_name] = [lat, lon]
+                    else:
+                        # If no results, try a broader search without district
+                        search_query = f"{market_name}, {state_name}, India"
+                        params["q"] = search_query
+                        
+                        response = requests.get(geocode_url, params=params, headers=headers)
+                        response.raise_for_status()
+                        results = response.json()
+                        
+                        # Sleep again to respect rate limits
+                        time.sleep(1)
+                        
+                        if results:
+                            lat = float(results[0]["lat"])
+                            lon = float(results[0]["lon"])
+                            geocoded_markets[state_name][district_name][market_name] = [lat, lon]
+                        else:
+                            # If still no results, use district center as fallback
+                            # Record the failure for later analysis
+                            geocoded_markets[state_name][district_name][market_name] = []
+                            failed_geocodes.append({
+                                "market": market_name,
+                                "district": district_name,
+                                "state": state_name
+                            })
+                except Exception as e:
+                    print(f"Error geocoding {market_name}, {district_name}, {state_name}: {e}")
+                    geocoded_markets[state_name][district_name][market_name] = []
+                    failed_geocodes.append({
+                        "market": market_name,
+                        "district": district_name,
+                        "state": state_name,
+                        "error": str(e)
+                    })
+    
+    # Print summary of geocoding results
+    total_markets = sum(
+        len(markets) 
+        for state in geocoded_markets.values() 
+        for markets in state.values()
+    )
+    failed_count = len(failed_geocodes)
+    success_rate = ((total_markets - failed_count) / total_markets) * 100 if total_markets else 0
+    
+    print(f"Geocoding complete: {total_markets - failed_count}/{total_markets} markets successfully geocoded ({success_rate:.2f}%)")
+    
+    if failed_geocodes:
+        # Save failed geocodes for later analysis
+        with open(DATA_DIR / "failed_geocodes.json", 'w', encoding='utf-8') as f:
+            json.dump(failed_geocodes, f, ensure_ascii=False, indent=2)
+            
+        print(f"List of failed geocodes saved to failed_geocodes.json")
     
     # Save the geocoded data
     with open(GEOCODED_MARKETS_FILE, 'w', encoding='utf-8') as f:
